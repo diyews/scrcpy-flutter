@@ -15,25 +15,34 @@ class Scrcpy extends StatefulWidget {
 }
 
 class _ScrcpyState extends State<Scrcpy> {
+  static const int remotePort = 7007;
   final String ip;
   Socket? videoSocket;
   Socket? controlSocket;
   String deviceName = '';
   int deviceWidth = 0;
   int deviceHeight = 0;
+  bool connected = false;
+  Size touchableSize = Size.zero;
+  double positionScale = 0;
+  String centerText = 'A';
 
   _ScrcpyState({required this.ip}) {
-    setupSocket();
+    try {
+      setupSocket();
+    } catch (e) {
+      centerText = 'Connect failed';
+    }
   }
 
   setupSocket() async {
-    await Socket.connect(ip, 7007).then((socket) {
+    await Socket.connect(ip, remotePort).then((socket) {
       videoSocket = socket;
       socket.transform(genVideoStreamTransformer()).listen((event) {
         print(event);
       });
     });
-    Socket.connect(ip, 7007).then((socket) {
+    Socket.connect(ip, remotePort).then((socket) {
       controlSocket = socket;
       socket.listen((event) {
         print(event);
@@ -69,6 +78,9 @@ class _ScrcpyState extends State<Scrcpy> {
               print(deviceName);
               print(deviceWidth);
               print(deviceHeight);
+              connected = true;
+              centerText = deviceName;
+              setState(() {});
             }
           }
         }
@@ -77,8 +89,10 @@ class _ScrcpyState extends State<Scrcpy> {
   }
 
   sendPointerEvent(PointerEvent details, double devicePixelRatio, int type) {
-    int x = (details.position.dx * devicePixelRatio).floor();
-    int y = (details.position.dy * devicePixelRatio).floor();
+    int x =
+        (details.localPosition.dx * positionScale * devicePixelRatio).floor();
+    int y =
+        (details.localPosition.dy * positionScale * devicePixelRatio).floor();
     var bd = BytesBuilder();
     bd.addByte(2);
     bd.addByte(type);
@@ -108,42 +122,39 @@ class _ScrcpyState extends State<Scrcpy> {
     final double devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
 
     return Scaffold(
-      body: Listener(
-        behavior: HitTestBehavior.opaque,
-        onPointerUp: (details) {
-          sendPointerEvent(details, devicePixelRatio, 1);
-        },
-        onPointerMove: (details) {
-          sendPointerEvent(details, devicePixelRatio, 2);
-        },
-        onPointerDown: (details) {
-          sendPointerEvent(details, devicePixelRatio, 0);
-        },
-        child: Center(
-          // Center is a layout widget. It takes a single child and positions it
-          // in the middle of the parent.
-          child: Column(
-            // Column is also a layout widget. It takes a list of children and
-            // arranges them vertically. By default, it sizes itself to fit its
-            // children horizontally, and tries to be as tall as its parent.
-            //
-            // Invoke "debug painting" (press "p" in the console, choose the
-            // "Toggle Debug Paint" action from the Flutter Inspector in Android
-            // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-            // to see the wireframe for each widget.
-            //
-            // Column has various properties to control how it sizes itself and
-            // how it positions its children. Here we use mainAxisAlignment to
-            // center the children vertically; the main axis here is the vertical
-            // axis because Columns are vertical (the cross axis would be
-            // horizontal).
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Text(
-                'A',
-                style: Theme.of(context).textTheme.headline4,
-              ),
-            ],
+      body: Center(
+        child: AspectRatio(
+          aspectRatio: deviceWidth == 0 ? 9 / 16 : deviceWidth / deviceHeight,
+          child: Listener(
+            behavior: HitTestBehavior.opaque,
+            onPointerUp: (details) {
+              sendPointerEvent(details, devicePixelRatio, 1);
+            },
+            onPointerMove: (details) {
+              sendPointerEvent(details, devicePixelRatio, 2);
+            },
+            onPointerDown: (details) {
+              sendPointerEvent(details, devicePixelRatio, 0);
+            },
+            child: LayoutBuilder(builder: (context, constraints) {
+              touchableSize = Size(constraints.maxWidth, constraints.maxHeight);
+              if (connected) {
+                positionScale =
+                    deviceHeight / (touchableSize.height * devicePixelRatio);
+              }
+              return Container(
+                decoration: const BoxDecoration(color: Colors.black26),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Text(
+                      centerText,
+                      style: Theme.of(context).textTheme.headline4,
+                    ),
+                  ],
+                ),
+              );
+            }),
           ),
         ),
       ),
@@ -151,7 +162,7 @@ class _ScrcpyState extends State<Scrcpy> {
         onPressed: null,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
     );
   }
 }
