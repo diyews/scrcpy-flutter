@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:floatingpanel/floatingpanel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -109,6 +110,31 @@ class _ScrcpyState extends State<Scrcpy> {
     controlSocket!.add(bd.toBytes());
   }
 
+  sendBackEvent() {
+    var bd = BytesBuilder();
+    bd.addByte(4);
+    bd.addByte(0);
+    bd.addByte(4);
+    bd.addByte(1);
+    controlSocket!.add(bd.toBytes());
+  }
+
+  sendKeyEvent(int keycode) {
+    var bd = BytesBuilder();
+    bd.addByte(0);
+    bd.addByte(0);
+    bd.add(Uint8List(4)..buffer.asByteData().setInt32(0, keycode, Endian.big));
+    bd.add(Uint8List(4)..buffer.asByteData().setInt32(0, 0, Endian.big));
+    bd.add(Uint8List(4)..buffer.asByteData().setInt32(0, 0, Endian.big));
+
+    bd.addByte(0);
+    bd.addByte(1);
+    bd.add(Uint8List(4)..buffer.asByteData().setInt32(0, keycode, Endian.big));
+    bd.add(Uint8List(4)..buffer.asByteData().setInt32(0, 0, Endian.big));
+    bd.add(Uint8List(4)..buffer.asByteData().setInt32(0, 0, Endian.big));
+    controlSocket!.add(bd.toBytes());
+  }
+
   @override
   void dispose() {
     super.dispose();
@@ -122,46 +148,73 @@ class _ScrcpyState extends State<Scrcpy> {
     final double devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
 
     return Scaffold(
-      body: Center(
-        child: AspectRatio(
-          aspectRatio: deviceWidth == 0 ? 9 / 16 : deviceWidth / deviceHeight,
-          child: Listener(
-            behavior: HitTestBehavior.opaque,
-            onPointerUp: (details) {
-              sendPointerEvent(details, devicePixelRatio, 1);
-            },
-            onPointerMove: (details) {
-              sendPointerEvent(details, devicePixelRatio, 2);
-            },
-            onPointerDown: (details) {
-              sendPointerEvent(details, devicePixelRatio, 0);
-            },
-            child: LayoutBuilder(builder: (context, constraints) {
-              touchableSize = Size(constraints.maxWidth, constraints.maxHeight);
-              if (connected) {
-                positionScale =
-                    deviceHeight / (touchableSize.height * devicePixelRatio);
-              }
-              return Container(
-                decoration: const BoxDecoration(color: Colors.black26),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Text(
-                      centerText,
-                      style: Theme.of(context).textTheme.headline4,
+      body: Stack(
+        children: [
+          Center(
+            child: AspectRatio(
+              aspectRatio:
+                  deviceWidth == 0 ? 9 / 16 : deviceWidth / deviceHeight,
+              child: Listener(
+                behavior: HitTestBehavior.opaque,
+                onPointerUp: (details) {
+                  sendPointerEvent(details, devicePixelRatio, 1);
+                },
+                onPointerMove: (details) {
+                  sendPointerEvent(details, devicePixelRatio, 2);
+                },
+                onPointerDown: (details) {
+                  sendPointerEvent(details, devicePixelRatio, 0);
+                },
+                child: LayoutBuilder(builder: (context, constraints) {
+                  touchableSize =
+                      Size(constraints.maxWidth, constraints.maxHeight);
+                  if (connected) {
+                    positionScale = deviceHeight /
+                        (touchableSize.height * devicePixelRatio);
+                  }
+                  return Container(
+                    decoration: const BoxDecoration(color: Colors.black26),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Text(
+                          centerText,
+                          style: Theme.of(context).textTheme.headline4,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            }),
+                  );
+                }),
+              ),
+            ),
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: null,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+          FloatBoxPanel(
+            positionTop: 50,
+            size: 50,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            dockType: DockType.inside,
+            defaultDock: true,
+            buttons: const [
+              Icons.arrow_back,
+              Icons.home,
+              Icons.menu,
+            ],
+            onPressed: (int index) {
+              switch (index) {
+                case 0:
+                  sendBackEvent();
+                  break;
+                case 1:
+                  sendKeyEvent(3);
+                  break;
+                case 2:
+                  sendKeyEvent(187);
+                  break;
+                default:
+              }
+            },
+          ),
+        ],
       ),
     );
   }

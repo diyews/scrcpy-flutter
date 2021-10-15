@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:scrcpy_flutter/scrcpy.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const MyApp());
@@ -51,18 +52,25 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  SharedPreferences? prefs;
+
   _MyHomePageState() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
   }
 
-  void _incrementCounter(BuildContext context) {
+  void _incrementCounter(BuildContext context) async {
+    prefs ??= await SharedPreferences.getInstance();
+    String? ip = prefs!.getString('lastDeviceIP');
     TextEditingController _controller = TextEditingController()
-      ..text = ('192.168.1.151');
+      ..text = (ip ?? '192.168.1.151');
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text('IP'),
+          titlePadding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
           content: TextField(
             controller: _controller,
             autofocus: true,
@@ -78,6 +86,8 @@ class _MyHomePageState extends State<MyHomePage> {
       },
     ).then((val) {
       print(val);
+      if (val == null) return;
+      prefs!.setString('lastDeviceIP', val);
       Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => Scrcpy(
                 ip: val,
@@ -97,6 +107,7 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text('X'),
       ),
+      resizeToAvoidBottomInset: false,
       body: Center(
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
