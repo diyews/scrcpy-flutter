@@ -6,18 +6,112 @@ import 'package:floatingpanel/floatingpanel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import 'android_keycode.dart';
+
 class Scrcpy extends StatefulWidget {
   final String ip;
 
   const Scrcpy({Key? key, required this.ip}) : super(key: key);
 
   @override
-  _ScrcpyState createState() => _ScrcpyState(ip: ip);
+  _ScrcpyState createState() => _ScrcpyState();
 }
 
-class _ScrcpyState extends State<Scrcpy> {
+class _ScrcpyState extends _ScrcpySocketState {
+  @override
+  Widget build(BuildContext context) {
+    final double devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          Center(
+            child: OrientationBuilder(builder: (context, orientation) {
+              if ((orientation == Orientation.portrait &&
+                      deviceHeight < deviceWidth) ||
+                  (orientation == Orientation.landscape &&
+                      deviceHeight > deviceWidth)) {
+                final int tmp = deviceHeight;
+                deviceHeight = deviceWidth;
+                deviceWidth = tmp;
+              }
+              return AspectRatio(
+                aspectRatio:
+                    deviceWidth == 0 ? 9 / 16 : deviceWidth / deviceHeight,
+                child: Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerUp: (details) {
+                    sendPointerEvent(details, devicePixelRatio, 1);
+                  },
+                  onPointerMove: (details) {
+                    sendPointerEvent(details, devicePixelRatio, 2);
+                  },
+                  onPointerDown: (details) {
+                    sendPointerEvent(details, devicePixelRatio, 0);
+                  },
+                  child: LayoutBuilder(builder: (context, constraints) {
+                    touchableSize =
+                        Size(constraints.maxWidth, constraints.maxHeight);
+                    if (connected) {
+                      positionScale = deviceHeight /
+                          (touchableSize.height * devicePixelRatio);
+                    }
+                    return Container(
+                      decoration: const BoxDecoration(color: Colors.black26),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Text(
+                            centerText,
+                            style: Theme.of(context).textTheme.headline4,
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ),
+              );
+            }),
+          ),
+          FloatBoxPanel(
+            positionTop: 50,
+            size: 50,
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            dockType: DockType.inside,
+            defaultDock: true,
+            buttons: const [
+              Icons.arrow_back,
+              Icons.home,
+              Icons.menu,
+              Icons.power_settings_new,
+            ],
+            onPressed: (int index) {
+              switch (index) {
+                case 0:
+                  sendBackEvent();
+                  break;
+                case 1:
+                  sendKeyEvent(AndroidKeycode.AKEYCODE_HOME);
+                  break;
+                case 2:
+                  sendKeyEvent(AndroidKeycode.AKEYCODE_APP_SWITCH);
+                  break;
+                case 3:
+                  sendKeyEvent(AndroidKeycode.AKEYCODE_POWER);
+                  break;
+                default:
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+abstract class _ScrcpySocketState extends State<Scrcpy> {
   static const int remotePort = 7007;
-  final String ip;
+  String get ip => widget.ip;
   Socket? videoSocket;
   Socket? controlSocket;
   String deviceName = '';
@@ -28,7 +122,10 @@ class _ScrcpyState extends State<Scrcpy> {
   double positionScale = 0;
   String centerText = 'A';
 
-  _ScrcpyState({required this.ip}) {
+  @override
+  initState() {
+    super.initState();
+
     try {
       setupSocket();
     } catch (e) {
@@ -141,81 +238,5 @@ class _ScrcpyState extends State<Scrcpy> {
 
     videoSocket?.destroy();
     controlSocket?.destroy();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final double devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          Center(
-            child: AspectRatio(
-              aspectRatio:
-                  deviceWidth == 0 ? 9 / 16 : deviceWidth / deviceHeight,
-              child: Listener(
-                behavior: HitTestBehavior.opaque,
-                onPointerUp: (details) {
-                  sendPointerEvent(details, devicePixelRatio, 1);
-                },
-                onPointerMove: (details) {
-                  sendPointerEvent(details, devicePixelRatio, 2);
-                },
-                onPointerDown: (details) {
-                  sendPointerEvent(details, devicePixelRatio, 0);
-                },
-                child: LayoutBuilder(builder: (context, constraints) {
-                  touchableSize =
-                      Size(constraints.maxWidth, constraints.maxHeight);
-                  if (connected) {
-                    positionScale = deviceHeight /
-                        (touchableSize.height * devicePixelRatio);
-                  }
-                  return Container(
-                    decoration: const BoxDecoration(color: Colors.black26),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        Text(
-                          centerText,
-                          style: Theme.of(context).textTheme.headline4,
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-            ),
-          ),
-          FloatBoxPanel(
-            positionTop: 50,
-            size: 50,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            dockType: DockType.inside,
-            defaultDock: true,
-            buttons: const [
-              Icons.arrow_back,
-              Icons.home,
-              Icons.menu,
-            ],
-            onPressed: (int index) {
-              switch (index) {
-                case 0:
-                  sendBackEvent();
-                  break;
-                case 1:
-                  sendKeyEvent(3);
-                  break;
-                case 2:
-                  sendKeyEvent(187);
-                  break;
-                default:
-              }
-            },
-          ),
-        ],
-      ),
-    );
   }
 }
