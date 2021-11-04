@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:floatingpanel/floatingpanel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'android_keycode.dart';
 
@@ -56,16 +57,13 @@ class _ScrcpyState extends _ScrcpySocketState {
                       positionScale = deviceHeight /
                           (touchableSize.height * devicePixelRatio);
                     }
-                    return Container(
-                      decoration: const BoxDecoration(color: Colors.black26),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          Text(
-                            centerText,
-                            style: Theme.of(context).textTheme.headline4,
-                          ),
-                        ],
+                    print(videoAndroidView);
+                    print(constraints);
+                    return SizedBox(
+                      width: constraints.maxWidth,
+                      height: constraints.maxHeight,
+                      child: const AndroidView(
+                        viewType: 'scrcpy-surface-view',
                       ),
                     );
                   }),
@@ -110,6 +108,7 @@ class _ScrcpyState extends _ScrcpySocketState {
 }
 
 abstract class _ScrcpySocketState extends State<Scrcpy> {
+  static const scrcpyChannel = MethodChannel('diye.ws/scrcpy');
   static const int remotePort = 7007;
   String get ip => widget.ip;
   Socket? videoSocket;
@@ -121,31 +120,40 @@ abstract class _ScrcpySocketState extends State<Scrcpy> {
   Size touchableSize = Size.zero;
   double positionScale = 0;
   String centerText = 'A';
+  AndroidView? videoAndroidView;
 
   @override
   initState() {
     super.initState();
 
     try {
-      setupSocket();
+      WidgetsBinding.instance?.addPostFrameCallback((timeStamp) {
+        setupSocket();
+      });
     } catch (e) {
       centerText = 'Connect failed';
     }
   }
 
   setupSocket() async {
-    await Socket.connect(ip, remotePort).then((socket) {
-      videoSocket = socket;
-      socket.transform(genVideoStreamTransformer()).listen((event) {
-        print(event);
+    final Map<dynamic, dynamic> value = await scrcpyChannel
+        .invokeMethod('connectVideo', {'ip': ip, 'port': remotePort});
+    print(value);
+    if (value.isNotEmpty) {
+      setState(() {
+        deviceName = value['name'];
+        deviceWidth = value['width'];
+        deviceHeight = value['height'];
       });
-    });
-    Socket.connect(ip, remotePort).then((socket) {
+    }
+    await Future.delayed(const Duration(milliseconds: 1500));
+    await Socket.connect(ip, remotePort).then((socket) {
       controlSocket = socket;
       socket.listen((event) {
         print(event);
       });
     });
+    await scrcpyChannel.invokeMethod('start');
   }
 
   StreamTransformer<Uint8List, dynamic> genVideoStreamTransformer() {
