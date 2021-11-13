@@ -40,6 +40,7 @@ dependencies:
       url: https://github.com/diyews/floating_panel.git
       ref: a8f7f6a628e2cccc2e902f71969352c737bb1b83
   shared_preferences: ^2.0.8
+  http: ^0.13.4
 
 dev_dependencies:
   flutter_test:

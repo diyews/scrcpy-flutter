@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:floatingpanel/floatingpanel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import 'android_keycode.dart';
 
@@ -18,6 +19,15 @@ class Scrcpy extends StatefulWidget {
 }
 
 class _ScrcpyState extends _ScrcpySocketState {
+  final _ScreenShotModel _screenShotModel = _ScreenShotModel();
+
+  @override
+  void dispose() {
+    _screenShotModel.dispose();
+
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final double devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
@@ -58,14 +68,9 @@ class _ScrcpyState extends _ScrcpySocketState {
                     }
                     return Container(
                       decoration: const BoxDecoration(color: Colors.black26),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          Text(
-                            centerText,
-                            style: Theme.of(context).textTheme.headline4,
-                          ),
-                        ],
+                      child: _ScreenShot(
+                        'http://${widget.ip}:7008/ognahaonogna',
+                        screenShotModel: _screenShotModel,
                       ),
                     );
                   }),
@@ -83,6 +88,8 @@ class _ScrcpyState extends _ScrcpySocketState {
               Icons.arrow_back,
               Icons.home,
               Icons.menu,
+              Icons.screenshot,
+              Icons.video_camera_back_outlined,
               Icons.power_settings_new,
             ],
             onPressed: (int index) {
@@ -97,6 +104,12 @@ class _ScrcpyState extends _ScrcpySocketState {
                   sendKeyEvent(AndroidKeycode.AKEYCODE_APP_SWITCH);
                   break;
                 case 3:
+                  _screenShotModel.setMode(_ScreenShotMode.One);
+                  break;
+                case 4:
+                  _screenShotModel.setMode(_ScreenShotMode.VideoLike);
+                  break;
+                case 5:
                   sendKeyEvent(AndroidKeycode.AKEYCODE_POWER);
                   break;
                 default:
@@ -238,5 +251,78 @@ abstract class _ScrcpySocketState extends State<Scrcpy> {
 
     videoSocket?.destroy();
     controlSocket?.destroy();
+  }
+}
+
+class _ScreenShot extends StatefulWidget {
+  final String url;
+  final _ScreenShotModel screenShotModel;
+
+  const _ScreenShot(this.url, {Key? key, required this.screenShotModel})
+      : super(key: key);
+
+  @override
+  _ScreenShotState createState() => _ScreenShotState();
+}
+
+class _ScreenShotState extends State<_ScreenShot> {
+  bool running = false;
+  late Future<http.Response> imageFuture;
+  Uint8List imageBytes = Uint8List(0);
+
+  @override
+  void initState() {
+    super.initState();
+    requestImage();
+    widget.screenShotModel.addListener(() {
+      requestImage();
+    });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  requestImage() async {
+    if (running) {
+      return;
+    }
+    running = true;
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final res = await http.get(Uri.parse('${widget.url}?v=$timestamp'));
+    if (!mounted) {
+      running = false;
+      return;
+    }
+    setState(() {
+      imageBytes = res.bodyBytes;
+    });
+    running = false;
+    if (widget.screenShotModel.mode == _ScreenShotMode.One) {
+      return;
+    }
+    return requestImage();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return imageBytes.isEmpty
+        ? Container()
+        : Image.memory(
+            imageBytes,
+            gaplessPlayback: true,
+          );
+  }
+}
+
+enum _ScreenShotMode { One, VideoLike }
+
+class _ScreenShotModel extends ChangeNotifier {
+  _ScreenShotMode mode = _ScreenShotMode.One;
+
+  setMode(_ScreenShotMode v) {
+    mode = v;
+    notifyListeners();
   }
 }
