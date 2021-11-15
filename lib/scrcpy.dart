@@ -6,6 +6,7 @@ import 'package:floatingpanel/floatingpanel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pointycastle/export.dart' hide State;
 
 import 'android_keycode.dart';
 
@@ -296,13 +297,34 @@ class _ScreenShotState extends State<_ScreenShot> {
       return;
     }
     setState(() {
-      imageBytes = res.bodyBytes;
+      imageBytes = processBodyBytes(res.bodyBytes);
     });
     running = false;
     if (widget.screenShotModel.mode == _ScreenShotMode.One) {
       return;
     }
     return requestImage();
+  }
+
+  static Uint8List aesKey = Uint8List.fromList('0123456789abcdef'.codeUnits);
+
+  static Uint8List processBodyBytes(Uint8List bodyBytes) {
+    final iv = Uint8List.sublistView(bodyBytes, 0, aesKey.length);
+    final cipherText = Uint8List.sublistView(bodyBytes, aesKey.length);
+
+    final cbc = CBCBlockCipher(AESFastEngine())
+      ..init(false, ParametersWithIV(KeyParameter(aesKey), iv));
+
+    final paddedPlainText = Uint8List(cipherText.length);
+
+    /* decrypt take 100ms(cold), 50ms(medium), 15-30ms(hot) */
+    var offset = 0;
+    while (offset < cipherText.length) {
+      offset += cbc.processBlock(cipherText, offset, paddedPlainText, offset);
+    }
+
+    return Uint8List.sublistView(
+        paddedPlainText, 0, paddedPlainText.length - paddedPlainText.last);
   }
 
   @override
