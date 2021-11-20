@@ -6,9 +6,9 @@ import 'package:floatingpanel/floatingpanel.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:pointycastle/export.dart' hide State;
 
 import 'android_keycode.dart';
+import 'cbc_cipher.dart';
 
 class Scrcpy extends StatefulWidget {
   final String ip;
@@ -69,9 +69,20 @@ class _ScrcpyState extends _ScrcpySocketState {
                     }
                     return Container(
                       decoration: const BoxDecoration(color: Colors.black26),
-                      child: _ScreenShot(
-                        'http://${widget.ip}:7008/ognahaonogna',
-                        screenShotModel: _screenShotModel,
+                      child: Stack(
+                        children: [
+                          Center(
+                            child: Text(
+                              centerText,
+                              style: Theme.of(context).textTheme.headline4,
+                            ),
+                          ),
+                          if (CBCCipher.aesKey.isNotEmpty)
+                            _ScreenShot(
+                              'http://${widget.ip}:7008/ognahaonogna',
+                              screenShotModel: _screenShotModel,
+                            )
+                        ],
                       ),
                     );
                   }),
@@ -105,10 +116,10 @@ class _ScrcpyState extends _ScrcpySocketState {
                   sendKeyEvent(AndroidKeycode.AKEYCODE_APP_SWITCH);
                   break;
                 case 3:
-                  _screenShotModel.setMode(_ScreenShotMode.One);
+                  _screenShotModel.setMode(_ScreenShotMode.one);
                   break;
                 case 4:
-                  _screenShotModel.setMode(_ScreenShotMode.VideoLike);
+                  _screenShotModel.setMode(_ScreenShotMode.videoLike);
                   break;
                 case 5:
                   sendKeyEvent(AndroidKeycode.AKEYCODE_POWER);
@@ -274,7 +285,6 @@ class _ScreenShotState extends State<_ScreenShot> {
   @override
   void initState() {
     super.initState();
-    requestImage();
     widget.screenShotModel.addListener(() {
       requestImage();
     });
@@ -297,34 +307,13 @@ class _ScreenShotState extends State<_ScreenShot> {
       return;
     }
     setState(() {
-      imageBytes = processBodyBytes(res.bodyBytes);
+      imageBytes = CBCCipher.processBodyBytes(res.bodyBytes);
     });
     running = false;
-    if (widget.screenShotModel.mode == _ScreenShotMode.One) {
+    if (widget.screenShotModel.mode == _ScreenShotMode.one) {
       return;
     }
     return requestImage();
-  }
-
-  static Uint8List aesKey = Uint8List.fromList('0123456789abcdef'.codeUnits);
-
-  static Uint8List processBodyBytes(Uint8List bodyBytes) {
-    final iv = Uint8List.sublistView(bodyBytes, 0, aesKey.length);
-    final cipherText = Uint8List.sublistView(bodyBytes, aesKey.length);
-
-    final cbc = CBCBlockCipher(AESFastEngine())
-      ..init(false, ParametersWithIV(KeyParameter(aesKey), iv));
-
-    final paddedPlainText = Uint8List(cipherText.length);
-
-    /* decrypt take 100ms(cold), 50ms(medium), 15-30ms(hot) */
-    var offset = 0;
-    while (offset < cipherText.length) {
-      offset += cbc.processBlock(cipherText, offset, paddedPlainText, offset);
-    }
-
-    return Uint8List.sublistView(
-        paddedPlainText, 0, paddedPlainText.length - paddedPlainText.last);
   }
 
   @override
@@ -338,10 +327,10 @@ class _ScreenShotState extends State<_ScreenShot> {
   }
 }
 
-enum _ScreenShotMode { One, VideoLike }
+enum _ScreenShotMode { one, videoLike }
 
 class _ScreenShotModel extends ChangeNotifier {
-  _ScreenShotMode mode = _ScreenShotMode.One;
+  _ScreenShotMode mode = _ScreenShotMode.one;
 
   setMode(_ScreenShotMode v) {
     mode = v;

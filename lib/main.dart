@@ -1,9 +1,16 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:scrcpy_flutter/cbc_cipher.dart';
+import 'package:scrcpy_flutter/device_list.dart';
 import 'package:scrcpy_flutter/scrcpy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await CBCCipher.initKey();
   runApp(const MyApp());
 }
 
@@ -27,14 +34,16 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(),
+      home: MyHomePage(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key}) : super(key: key);
+  MyHomePage({Key? key}) : super(key: key) {
+    CBCCipher.initKey();
+  }
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -46,6 +55,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   SharedPreferences? prefs;
+  final refreshDeviceNotifier = ChangeNotifier();
 
   _MyHomePageState() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
@@ -99,33 +109,35 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('X'),
+        actions: [
+          IconButton(
+              onPressed: () {
+                refreshDeviceNotifier.notifyListeners();
+              },
+              icon: const Icon(Icons.refresh)),
+          PopupMenuButton(itemBuilder: (_context) {
+            return [
+              PopupMenuItem(
+                child: const Text('Key'),
+                onTap: () {
+                  Timer.run(() async {
+                    final result = await _openEditEncryptKeyDialog(context);
+                    if (result.isNotEmpty) {
+                      refreshDeviceNotifier.notifyListeners();
+                    }
+                  });
+                },
+              )
+            ];
+          }),
+        ],
       ),
       resizeToAvoidBottomInset: false,
       body: Center(
         // Center is a layout widget. It takes a single child and positions it
         // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'xxx',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
+        child: DeviceList(
+          refreshNotifier: refreshDeviceNotifier,
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -135,4 +147,38 @@ class _MyHomePageState extends State<MyHomePage> {
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
+}
+
+Future<String> _openEditEncryptKeyDialog(BuildContext context) async {
+  final prefs = await SharedPreferences.getInstance();
+  final String key = prefs.getString('encrypt_key') ?? '';
+
+  TextEditingController _controller = TextEditingController()..text = key;
+
+  return showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Key(16 length)'),
+        titlePadding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+        contentPadding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+        content: TextField(
+          controller: _controller,
+          autofocus: true,
+        ),
+        actions: [
+          ElevatedButton(
+              onPressed: () {
+                final text = _controller.text;
+                prefs.setString('encrypt_key', text);
+                CBCCipher.aesKey = Uint8List.fromList(text.codeUnits);
+                Navigator.of(context).pop(_controller.text);
+              },
+              child: const Text('OK')),
+        ],
+      );
+    },
+  ).then((value) {
+    return value ?? '';
+  });
 }
