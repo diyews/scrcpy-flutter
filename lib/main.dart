@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await CBCCipher.initIsolate();
   await CBCCipher.initKey();
   runApp(const MyApp());
 }
@@ -34,16 +35,14 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(),
+      home: const MyHomePage(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key? key}) : super(key: key) {
-    CBCCipher.initKey();
-  }
+  const MyHomePage({Key? key}) : super(key: key);
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -171,8 +170,8 @@ Future<String> _openEditEncryptKeyDialog(BuildContext context) async {
               onPressed: () {
                 final text = _controller.text;
                 prefs.setString('encrypt_key', text);
-                CBCCipher.aesKey = Uint8List.fromList(text.codeUnits);
-                Navigator.of(context).pop(_controller.text);
+                CBCCipher.setAESKey(Uint8List.fromList(text.codeUnits));
+                Navigator.of(context).pop(text);
               },
               child: const Text('OK')),
         ],

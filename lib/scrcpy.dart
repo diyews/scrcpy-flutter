@@ -306,9 +306,8 @@ class _ScreenShotState extends State<_ScreenShot> {
       running = false;
       return;
     }
-    setState(() {
-      imageBytes = CBCCipher.processBodyBytes(res.bodyBytes);
-    });
+    imageBytes = await CBCCipherIsolate.processBodyBytesIsolate(res.bodyBytes);
+    setState(() {});
     running = false;
     if (widget.screenShotModel.mode == _ScreenShotMode.one) {
       return;
