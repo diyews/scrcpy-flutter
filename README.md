@@ -2,15 +2,28 @@
 
 Scrcpy client base on flutter.
 
-## Getting Started
+## Getting Started 
+- Windows 
+1. Use adb to push [server.jar](https://github.com/diyews/scrcpy/releases) to phone
+    
+    ``.\adb.exe push "C:\scrcpy-server-flutter.jar" /sdcard/scrcpy-server-flutter.jar``
+    
+1. Use adb to start server
 
-This project is a starting point for a Flutter application.
+    ``.\adb.exe shell CLASSPATH=/sdcard/scrcpy-server-flutter.jar nohup app_process / --nice-name=scrcpy_device_server com.genymobile.scrcpy.Server <16_length_key> error 0 8000000 0 -1 true - true true 0 false false - - false `>/dev/null 2`>`&1 `& ``
+    
+- Unix    
+1. Use adb to push [server.jar](https://github.com/diyews/scrcpy/releases) to phone
+    
+    ``adb push ./scrcpy-server-flutter.jar /sdcard/scrcpy-server-flutter.jar``
+    
+1. Use adb to start server
 
-A few resources to get you started if this is your first Flutter project:
+    ``adb shell CLASSPATH=/sdcard/scrcpy-server-flutter.jar nohup app_process / --nice-name=scrcpy_device_server com.genymobile.scrcpy.Server <16_length_key> error 0 8000000 0 -1 true - true true 0 false false - - false >/dev/null 2>&1 & ``
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+Then you are able to connect to the phone via app.
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## How does it work
+App use tcp to connect to `scrcpy-server-flutter.jar`, server port `7007`.
+
+Server use port `7008` to start http server for serving screenshot.
