@@ -35,7 +35,7 @@ Server use port `7008` to start http server for serving screenshot.
 
 1. Server didn't start. 
 
-    You can check if server is running by typing `adb shell "ps | grep scrcpy_device_server"`
+    You can check if server is running by typing `adb shell "ps -A | grep scrcpy_device_server"`
 
     Try to run command in the front to check if errors there whiling start server. (remove `nohup`, `&` and output redirect from the start script)
     
