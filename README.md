@@ -7,20 +7,27 @@ Scrcpy client base on flutter.
 
 
 - Windows 
+
 1. Use adb to push [server.jar](https://github.com/diyews/scrcpy/releases) to phone
     
-    ``.\adb.exe push "C:\scrcpy-server-flutter.jar" /sdcard/scrcpy-server-flutter.jar``
+        .\adb.exe push "C:\scrcpy-server-flutter.jar" /sdcard/scrcpy-server-flutter.jar
     
-1. Use adb to start server
-
-    ``.\adb.exe shell CLASSPATH=/sdcard/scrcpy-server-flutter.jar nohup app_process / --nice-name=scrcpy_device_server com.genymobile.scrcpy.Server <16_char_key> error 0 8000000 0 -1 true - true true 0 false false - - false `>/dev/null 2`>`&1 `& ``
+1. Use adb to start server (Replace `<16_char_key>` to your own)
+    
+    <details>
+        <summary>Click to expand!</summary>
+    
+      ``.\adb.exe shell CLASSPATH=/sdcard/scrcpy-server-flutter.jar nohup app_process / --nice-name=scrcpy_device_server com.genymobile.scrcpy.Server <16_char_key> error 0 8000000 0 -1 true - true true 0 false false - - false `>/dev/null 2`>`&1 `& ``
+    
+    (Above `powershell.exe` use `` ` `` to escape character, in `cmd.exe` it is `` ^ ``)
+    </details>
     
 - Unix    
 1. Use adb to push [server.jar](https://github.com/diyews/scrcpy/releases) to phone
     
-    ``adb push ./scrcpy-server-flutter.jar /sdcard/scrcpy-server-flutter.jar``
+        adb push ./scrcpy-server-flutter.jar /sdcard/scrcpy-server-flutter.jar
     
-1. Use adb to start server
+1. Use adb to start server (Replace `<16_char_key>` to your own)
 
     ``adb shell CLASSPATH=/sdcard/scrcpy-server-flutter.jar nohup app_process / --nice-name=scrcpy_device_server com.genymobile.scrcpy.Server <16_char_key> error 0 8000000 0 -1 true - true true 0 false false - - false >/dev/null 2>&1 & ``
 
