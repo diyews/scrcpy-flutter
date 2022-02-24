@@ -47,4 +47,7 @@ Server use port `7008` to start http server for serving screenshot.
     Try to run command in the front to check if errors there whiling start server. (remove `nohup`, `&` and output redirect from the start script)
     
     `adb shell CLASSPATH=/sdcard/scrcpy-server-flutter.jar nohup app_process / --nice-name=scrcpy_device_server com.genymobile.scrcpy.Server <16_char_key> error 0 8000000 0 -1 true - true true 0 false false - - false`
+    
+## Preview
+![scrcpy_flutter](https://user-images.githubusercontent.com/35769340/155541745-b1bf15d8-8269-46ae-9fc4-e7f90a559672.gif)
   
